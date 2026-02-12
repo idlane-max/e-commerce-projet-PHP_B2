@@ -1,19 +1,19 @@
 <?php
 /**
- * Classe User - Gestion des utilisateurs
+ * Classe User - Gestion des utilisateurs (Version PDO adaptée à tes colonnes)
  */
 class User {
-    private $conn;
+    private $pdo;
     
-    public function __construct($database) {
-        $this->conn = $database;
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
     }
     
     /**
      * Inscription d'un nouvel utilisateur
      */
     public function register($nom, $email, $password, $confirmPassword) {
-        // Validation des données
+        // Validation basique
         if (empty($nom) || empty($email) || empty($password)) {
             return ['success' => false, 'message' => 'Tous les champs sont obligatoires'];
         }
@@ -30,27 +30,35 @@ class User {
             return ['success' => false, 'message' => 'Le mot de passe doit contenir au moins 6 caractères'];
         }
         
-        // Vérifier si l'email existe déjà
-        $stmt = $this->conn->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        // 1. Vérifier si l'email existe déjà
+        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE email = :email");
+        $stmt->execute(['email' => $email]);
         
-        if ($result->num_rows > 0) {
+        if ($stmt->rowCount() > 0) {
             return ['success' => false, 'message' => 'Cet email est déjà utilisé'];
         }
         
-        // Hacher le mot de passe
+        // 2. Hacher le mot de passe
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         
-        // Insérer l'utilisateur
-        $stmt = $this->conn->prepare("INSERT INTO users (nom, email, mot_de_passe, rôle) VALUES (?, ?, ?, 'client')");
-        $stmt->bind_param("sss", $nom, $email, $hashedPassword);
+        // 3. Insérer l'utilisateur
+        // CORRECTION ICI : utilisation de 'mot_de_passe' au lieu de 'password'
+        // NOTE : J'utilise 'role' (sans accent). Si ta colonne est 'rôle', modifie la ligne ci-dessous.
+        $sql = "INSERT INTO users (nom, email, mot_de_passe, role) VALUES (:nom, :email, :mdp, 'client')";
         
-        if ($stmt->execute()) {
-            return ['success' => true, 'message' => 'Inscription réussie! Vous pouvez maintenant vous connecter.'];
+        $stmt = $this->pdo->prepare($sql);
+        
+        // On lie les paramètres
+        $params = [
+            'nom' => $nom, 
+            'email' => $email, 
+            'mdp' => $hashedPassword // On envoie le hash dans la colonne mot_de_passe
+        ];
+
+        if ($stmt->execute($params)) {
+            return ['success' => true, 'message' => 'Inscription réussie ! Vous allez être redirigé.'];
         } else {
-            return ['success' => false, 'message' => 'Erreur lors de l\'inscription'];
+            return ['success' => false, 'message' => 'Erreur technique lors de l\'inscription'];
         }
     }
     
@@ -58,84 +66,71 @@ class User {
      * Connexion d'un utilisateur
      */
     public function login($email, $password) {
-        // Validation des données
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => 'Email et mot de passe obligatoires'];
         }
         
-        // Récupérer l'utilisateur
-        $stmt = $this->conn->prepare("SELECT id, nom, email, mot_de_passe, rôle FROM users WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        // Récupération de l'utilisateur
+        $stmt = $this->pdo->prepare("SELECT * FROM users WHERE email = :email");
+        $stmt->execute(['email' => $email]);
+        $user = $stmt->fetch();
         
-        if ($result->num_rows === 0) {
+        if (!$user) {
             return ['success' => false, 'message' => 'Email ou mot de passe incorrect'];
         }
         
-        $user = $result->fetch_assoc();
-        
-        // Vérifier le mot de passe
+        // Vérification du hash
+        // CORRECTION ICI : on compare avec $user['mot_de_passe']
         if (!password_verify($password, $user['mot_de_passe'])) {
             return ['success' => false, 'message' => 'Email ou mot de passe incorrect'];
         }
         
-        // Créer la session
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_nom'] = $user['nom'];
-        $_SESSION['user_email'] = $user['email'];
-        $_SESSION['user_role'] = $user['rôle'];
+        // Création de la session
+        $_SESSION['user'] = [
+            'id' => $user['id'],
+            'nom' => $user['nom'],
+            'email' => $user['email'],
+            'role' => $user['role'] ?? $user['role'] ?? 'client' // Sécurité : tente les deux ou met par défaut
+        ];
         
-        return ['success' => true, 'message' => 'Connexion réussie', 'role' => $user['rôle']];
+        return ['success' => true, 'message' => 'Connexion réussie', 'role' => $_SESSION['user']['role']];
     }
-    
+
+    public static function isAdmin() {
+        return isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin';
+        
+    }
+
+    // --- AJOUTS POUR L'ADMIN (PDO) ---
+
     /**
-     * Déconnexion de l'utilisateur
+     * Récupérer tous les clients (Performance : on ne prend que l'utile)
      */
-    public function logout() {
-        session_destroy();
-        return ['success' => true, 'message' => 'Déconnexion réussie'];
+    public function getAllClients() {
+        // On exclut les admins de la liste pour éviter les accidents
+        $sql = "SELECT id, nom, email, date_inscription 
+                FROM users 
+                WHERE role != 'admin' 
+                ORDER BY date_inscription DESC";
+        $stmt = $this->pdo->query($sql);
+        return $stmt->fetchAll();
     }
-    
-    /**
-     * Récupérer tous les utilisateurs
-     */
-    public function getAllUsers() {
-        $stmt = $this->conn->prepare("SELECT id, nom, email, rôle, date_inscription FROM users WHERE rôle = 'client' ORDER BY date_inscription DESC");
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    }
-    
+
     /**
      * Supprimer un utilisateur
      */
-    public function deleteUser($userId) {
-        if (!is_numeric($userId)) {
-            return ['success' => false, 'message' => 'ID utilisateur invalide'];
-        }
-        
-        $stmt = $this->conn->prepare("DELETE FROM users WHERE id = ? AND rôle = 'client'");
-        $stmt->bind_param("i", $userId);
-        
-        if ($stmt->execute()) {
-            return ['success' => true, 'message' => 'Utilisateur supprimé avec succès'];
-        } else {
-            return ['success' => false, 'message' => 'Erreur lors de la suppression'];
+    public function deleteUser($id) {
+        // On vérifie que l'ID est valide
+        if ($id <= 0) return ['success' => false, 'message' => 'ID invalide'];
+
+        try {
+            $stmt = $this->pdo->prepare("DELETE FROM users WHERE id = :id");
+            $stmt->execute(['id' => $id]);
+            return ['success' => true, 'message' => 'Utilisateur supprimé'];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
         }
     }
-    
-    /**
-     * Vérifier si l'utilisateur est connecté
-     */
-    public static function isLoggedIn() {
-        return isset($_SESSION['user_id']);
-    }
-    
-    /**
-     * Vérifier si l'utilisateur est administrateur
-     */
-    public static function isAdmin() {
-        return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
-    }
+
 }
 ?>

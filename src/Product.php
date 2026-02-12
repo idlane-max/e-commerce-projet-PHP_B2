@@ -1,166 +1,135 @@
 <?php
 /**
- * Classe Product - Gestion des produits
+ * Classe Product - Gestion des produits (Version PDO)
  */
 class Product {
-    private $conn;
+    private $pdo; // On utilise PDO
     
-    public function __construct($database) {
-        $this->conn = $database;
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
     }
     
     /**
-     * Récupérer tous les produits
+     * Récupérer tous les produits (avec leur stock)
      */
     public function getAllProducts() {
-        $stmt = $this->conn->prepare("
-            SELECT i.id, i.nom, i.description, i.prix, i.image, s.quantite_en_stock
-            FROM items i
-            LEFT JOIN stock s ON i.id = s.id_item
-            ORDER BY i.date_publication DESC
-        ");
-        if (!$stmt) {
-            die('Erreur prepare: ' . $this->conn->error);
-        }
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        // Jointure pour avoir la quantité en stock avec le produit
+        // Attention : On a nommé la colonne 'quantite' dans la table 'stock' à l'étape 1
+        $sql = "SELECT i.*, s.quantite_en_stock as stock 
+                FROM items i 
+                LEFT JOIN stock s ON i.id = s.id_item 
+                ORDER BY i.date_publication DESC";
+                
+        $stmt = $this->pdo->query($sql);
+        return $stmt->fetchAll();
     }
     
     /**
      * Récupérer un produit par ID
      */
-    public function getProductById($productId) {
-        $stmt = $this->conn->prepare("
-            SELECT i.id, i.nom, i.description, i.prix, i.image, s.quantite_en_stock, i.date_publication
-            FROM items i
-            LEFT JOIN stock s ON i.id = s.id_item
-            WHERE i.id = ?
-        ");
-        $stmt->bind_param("i", $productId);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    public function getProductById($id) {
+        $sql = "SELECT i.*, s.quantite_en_stock as stock 
+                FROM items i 
+                LEFT JOIN stock s ON i.id = s.id_item 
+                WHERE i.id = :id";
+                
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['id' => $id]);
         
-        if ($result->num_rows === 0) {
-            return null;
-        }
-        
-        return $result->fetch_assoc();
+        $product = $stmt->fetch();
+        return $product ?: null; // Retourne null si pas trouvé
     }
     
     /**
-     * Ajouter un nouveau produit
+     * Ajouter un nouveau produit (ADMIN)
      */
     public function addProduct($nom, $description, $prix, $image, $stock) {
-        // Validation des données
-        if (empty($nom) || empty($description) || empty($prix) || empty($stock)) {
+        // Validation basique
+        if (empty($nom) || empty($description) || empty($prix)) {
             return ['success' => false, 'message' => 'Tous les champs obligatoires doivent être remplis'];
         }
         
-        if (!is_numeric($prix) || $prix <= 0) {
-            return ['success' => false, 'message' => 'Le prix doit être un nombre positif'];
-        }
-        
-        if (!is_numeric($stock) || $stock < 0) {
-            return ['success' => false, 'message' => 'Le stock doit être un nombre positif'];
-        }
-        
-        // Générer le nom du fichier image
-        $imageName = $image ? $image : 'default.jpg';
-        
-        // Insérer le produit
-        $stmt = $this->conn->prepare("INSERT INTO items (nom, description, prix, image) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssds", $nom, $description, $prix, $imageName);
-        
-        if (!$stmt->execute()) {
-            return ['success' => false, 'message' => 'Erreur lors de l\'ajout du produit'];
-        }
-        
-        $productId = $this->conn->insert_id;
-        
-        // Ajouter le stock
-        $stmtStock = $this->conn->prepare("INSERT INTO stock (id_item, quantite_en_stock) VALUES (?, ?)");
-        $stmtStock->bind_param("ii", $productId, $stock);
-        
-        if ($stmtStock->execute()) {
+        try {
+            // On commence une transaction (pour que tout s'ajoute ou rien du tout)
+            $this->pdo->beginTransaction();
+
+            // 1. Insertion dans ITEMS
+            $sqlItem = "INSERT INTO items (nom, description, prix, image) VALUES (:nom, :desc, :prix, :img)";
+            $stmt = $this->pdo->prepare($sqlItem);
+            $stmt->execute([
+                'nom' => $nom,
+                'desc' => $description,
+                'prix' => $prix,
+                'img' => $image ?: 'default.jpg'
+            ]);
+            
+            // On récupère l'ID créé
+            $productId = $this->pdo->lastInsertId();
+            
+            // 2. Insertion dans STOCK
+            $sqlStock = "INSERT INTO stock (id_item, quantite_en_stock) VALUES (:id, :qty)";
+            $stmtStock = $this->pdo->prepare($sqlStock);
+            $stmtStock->execute([
+                'id' => $productId,
+                'qty' => $stock
+            ]);
+            
+            // Si tout est bon, on valide
+            $this->pdo->commit();
             return ['success' => true, 'message' => 'Produit ajouté avec succès', 'id' => $productId];
-        } else {
-            return ['success' => false, 'message' => 'Erreur lors de l\'ajout du stock'];
+
+        } catch (Exception $e) {
+            // En cas d'erreur, on annule tout
+            $this->pdo->rollBack();
+            return ['success' => false, 'message' => 'Erreur : ' . $e->getMessage()];
         }
     }
     
     /**
      * Modifier un produit
      */
-    public function updateProduct($productId, $nom, $description, $prix, $image, $stock) {
-        // Validation des données
-        if (!is_numeric($productId) || $productId <= 0) {
-            return ['success' => false, 'message' => 'ID produit invalide'];
+    public function updateProduct($id, $nom, $description, $prix, $image, $stock) {
+        try {
+            $this->pdo->beginTransaction();
+
+            // 1. Mise à jour ITEM
+            $sql = "UPDATE items SET nom = :nom, description = :desc, prix = :prix, image = :img WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([
+                'nom' => $nom,
+                'desc' => $description,
+                'prix' => $prix,
+                'img' => $image,
+                'id' => $id
+            ]);
+
+            // 2. Mise à jour STOCK
+            $sqlStock = "UPDATE stock SET quantite_en_stock = :qty WHERE id_item = :id";
+            $stmtStock = $this->pdo->prepare($sqlStock);
+            $stmtStock->execute([
+                'qty' => $stock,
+                'id' => $id
+            ]);
+
+            $this->pdo->commit();
+            return ['success' => true, 'message' => 'Produit modifié avec succès'];
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            return ['success' => false, 'message' => 'Erreur de mise à jour'];
         }
-        
-        if (empty($nom) || empty($description) || empty($prix)) {
-            return ['success' => false, 'message' => 'Tous les champs obligatoires doivent être remplis'];
-        }
-        
-        if (!is_numeric($prix) || $prix <= 0) {
-            return ['success' => false, 'message' => 'Le prix doit être un nombre positif'];
-        }
-        
-        // Obtenir l'image existante si aucune nouvelle n'est fournie
-        if (empty($image)) {
-            $product = $this->getProductById($productId);
-            if (!$product) {
-                return ['success' => false, 'message' => 'Produit non trouvé'];
-            }
-            $image = $product['image'];
-        }
-        
-        // Mettre à jour le produit
-        $stmt = $this->conn->prepare("UPDATE items SET nom = ?, description = ?, prix = ?, image = ? WHERE id = ?");
-        $stmt->bind_param("ssdsi", $nom, $description, $prix, $image, $productId);
-        
-        if (!$stmt->execute()) {
-            return ['success' => false, 'message' => 'Erreur lors de la modification du produit'];
-        }
-        
-        // Mettre à jour le stock si fourni
-        if (!empty($stock) && is_numeric($stock) && $stock >= 0) {
-            $stmtStock = $this->conn->prepare("UPDATE stock SET quantite_en_stock = ? WHERE id_item = ?");
-            $stmtStock->bind_param("ii", $stock, $productId);
-            $stmtStock->execute();
-        }
-        
-        return ['success' => true, 'message' => 'Produit modifié avec succès'];
     }
     
     /**
      * Supprimer un produit
      */
-    public function deleteProduct($productId) {
-        if (!is_numeric($productId) || $productId <= 0) {
-            return ['success' => false, 'message' => 'ID produit invalide'];
+    public function deleteProduct($id) {
+        // Grâce au "ON DELETE CASCADE" dans la BDD, supprimer l'item supprimera aussi le stock
+        $stmt = $this->pdo->prepare("DELETE FROM items WHERE id = :id");
+        if ($stmt->execute(['id' => $id])) {
+            return ['success' => true, 'message' => 'Produit supprimé'];
         }
-        
-        $stmt = $this->conn->prepare("DELETE FROM items WHERE id = ?");
-        $stmt->bind_param("i", $productId);
-        
-        if ($stmt->execute()) {
-            return ['success' => true, 'message' => 'Produit supprimé avec succès'];
-        } else {
-            return ['success' => false, 'message' => 'Erreur lors de la suppression du produit'];
-        }
-    }
-    
-    /**
-     * Vérifier si un produit a suffisamment de stock
-     */
-    public function hasEnoughStock($productId, $quantity) {
-        $product = $this->getProductById($productId);
-        
-        if (!$product) {
-            return false;
-        }
-        
-        return $product['quantite_en_stock'] >= $quantity;
+        return ['success' => false, 'message' => 'Erreur de suppression'];
     }
 }
 ?>
