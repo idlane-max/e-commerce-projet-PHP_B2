@@ -1,74 +1,73 @@
 <?php
-/**
- * Connexion utilisateur
- */
-require_once '../config/config.php';
-require_once '../src/User.php';
+// 1. Inclusions (Configuration + Design + Classe)
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/header.php'; // AFFICHE LE MENU ET LE CSS
+require_once __DIR__ . '/../src/User.php';
 
-// Rediriger si déjà connecté
-if (User::isLoggedIn()) {
+// 2. Redirection si déjà connecté
+// On vérifie directement la session, c'est plus sûr et rapide
+if (isset($_SESSION['user'])) {
     header('Location: ../public/index.php');
-    exit;
+    exit();
 }
-
-$db = connectDB();
-$user = new User($db);
 
 $message = '';
 $messageType = '';
 
+// 3. Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pdo = connectDB(); // Connexion PDO
+    $user = new User($pdo);
+
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     
+    // Appel de ta méthode login (qui est dans User.php)
     $result = $user->login($email, $password);
     
-    $message = $result['message'];
-    $messageType = $result['success'] ? 'success' : 'error';
-    
     if ($result['success']) {
+        // Succès : Redirection vers l'accueil
         header('Location: ../public/index.php');
-        exit;
+        exit();
+    } else {
+        // Erreur : On affiche le message
+        $message = $result['message'];
+        $messageType = 'danger'; // 'danger' pour le rouge CSS
     }
 }
-
-$db->close();
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion - E-Commerce</title>
-    <link rel="stylesheet" href="../public/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <div class="auth-form">
-            <h1>Connexion</h1>
+
+<div class="container">
+    <div class="form-container">
+        <h1 style="text-align:center; margin-bottom:20px;">Connexion</h1>
+        
+        <?php if ($message): ?>
+            <div class="alert alert-<?php echo $messageType; ?>">
+                <?php echo $message; ?>
+            </div>
+        <?php endif; ?>
+        
+        <form method="POST" action="login.php">
+            <div class="form-group">
+                <label for="email">Email :</label>
+                <input type="email" id="email" name="email" required value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>">
+            </div>
             
-            <?php if ($message): ?>
-                <div class="alert alert-<?php echo $messageType; ?>">
-                    <?php echo $message; ?>
-                </div>
-            <?php endif; ?>
+            <div class="form-group">
+                <label for="password">Mot de passe :</label>
+                <input type="password" id="password" name="password" required>
+            </div>
             
-            <form method="POST">
-                <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Mot de passe:</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Se connecter</button>
-            </form>
-            
-            <p>Pas encore de compte? <a href="register.php">Inscrivez-vous ici</a></p>
-        </div>
+            <button type="submit" class="btn">Se connecter</button>
+        </form>
+        
+        <p style="text-align:center; margin-top:15px;">
+            Pas encore de compte ? <a href="register.php" style="color: var(--primary-color);">Inscrivez-vous ici</a>
+        </p>
     </div>
-</body>
-</html>
+</div>
+
+<?php 
+// 5. On ferme avec le footer
+require_once __DIR__ . '/../includes/footer.php'; 
+?>

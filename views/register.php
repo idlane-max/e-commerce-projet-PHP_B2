@@ -1,17 +1,17 @@
 <?php
-/**
- * Inscription utilisateur
- */
-require_once '../config/config.php';
-require_once '../src/User.php';
-
-$db = connectDB();
-$user = new User($db);
+// 1. Inclusions essentielles
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/header.php'; // Charge le HTML, CSS et le Menu
+require_once __DIR__ . '/../src/User.php';   // Charge la classe
 
 $message = '';
 $messageType = '';
 
+// 2. Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pdo = connectDB(); // On récupère la connexion PDO
+    $user = new User($pdo); // On passe PDO au constructeur
+
     $nom = trim($_POST['nom'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -20,61 +20,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = $user->register($nom, $email, $password, $confirmPassword);
     
     $message = $result['message'];
-    $messageType = $result['success'] ? 'success' : 'error';
+    // On adapte la classe CSS (success ou danger)
+    $messageType = $result['success'] ? 'success' : 'danger';
     
     if ($result['success']) {
-        // Rediriger vers la connexion après 2 secondes
-        header("refresh:2;url=login.php");
+        // Redirection JS après 2 secondes
+        echo '<script>setTimeout(function(){ window.location.href = "login.php"; }, 2000);</script>';
     }
 }
-
-$db->close();
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inscription - E-Commerce</title>
-    <link rel="stylesheet" href="../public/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <div class="auth-form">
-            <h1>Inscription</h1>
+
+<div class="container">
+    <div class="form-container">
+        <h1 style="text-align:center; margin-bottom:20px;">Inscription</h1>
+        
+        <?php if ($message): ?>
+            <div class="alert alert-<?php echo $messageType; ?>">
+                <?php echo $message; ?>
+            </div>
+        <?php endif; ?>
+        
+        <form method="POST" action="register.php">
+            <div class="form-group">
+                <label for="nom">Nom complet :</label>
+                <input type="text" id="nom" name="nom" required value="<?php echo isset($nom) ? htmlspecialchars($nom) : ''; ?>">
+            </div>
             
-            <?php if ($message): ?>
-                <div class="alert alert-<?php echo $messageType; ?>">
-                    <?php echo $message; ?>
-                </div>
-            <?php endif; ?>
+            <div class="form-group">
+                <label for="email">Email :</label>
+                <input type="email" id="email" name="email" required value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>">
+            </div>
             
-            <form method="POST">
-                <div class="form-group">
-                    <label for="nom">Nom complet:</label>
-                    <input type="text" id="nom" name="nom" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Mot de passe:</label>
-                    <input type="password" id="password" name="password" required minlength="6">
-                </div>
-                
-                <div class="form-group">
-                    <label for="confirm_password">Confirmer le mot de passe:</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
-                </div>
-                
-                <button type="submit" class="btn btn-primary">S'inscrire</button>
-            </form>
+            <div class="form-group">
+                <label for="password">Mot de passe :</label>
+                <input type="password" id="password" name="password" required minlength="6">
+            </div>
             
-            <p>Vous avez déjà un compte? <a href="login.php">Connectez-vous ici</a></p>
-        </div>
+            <div class="form-group">
+                <label for="confirm_password">Confirmer le mot de passe :</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
+            </div>
+            
+            <button type="submit" class="btn">S'inscrire</button>
+        </form>
+        
+        <p style="text-align:center; margin-top:15px;">
+            Vous avez déjà un compte ? <a href="login.php" style="color: var(--primary-color);">Connectez-vous ici</a>
+        </p>
     </div>
-</body>
-</html>
+</div>
+
+<?php 
+// 4. On ferme la page avec le footer
+require_once __DIR__ . '/../includes/footer.php'; 
+?>

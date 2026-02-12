@@ -1,15 +1,14 @@
 <?php
-/**
- * Déconnexion utilisateur
- */
-require_once '../config/config.php';
-require_once '../src/User.php';
+// On démarre la session (nécessaire pour pouvoir la détruire)
+session_start();
 
-$db = connectDB();
-$user = new User($db);
+// On détruit toutes les variables de session
+$_SESSION = [];
 
-$user->logout();
+// On détruit la session côté serveur
+session_destroy();
 
-header('Location: ../public/index.php');
-exit;
+// Redirection vers l'accueil
+header("Location: ../public/index.php");
+exit();
 ?>
