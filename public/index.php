@@ -1,107 +1,44 @@
 <?php
-/**
- * Accueil du site e-commerce
- */
-require_once '../config/config.php';
-require_once '../src/Product.php';
-require_once '../src/User.php';
-
-$db = connectDB();
-$product = new Product($db);
-
-// Récupérer les 6 premiers produits
-$allProducts = $product->getAllProducts();
-$featuredProducts = array_slice($allProducts, 0, 6);
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accueil - E-Commerce</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container navbar-content">
-            <div class="logo">
-                <h1><a href="index.php">E-Commerce</a></h1>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="index.php">Accueil</a></li>
-                <li><a href="articles.php">Articles</a></li>
-                <li><a href="about.php">Qui sommes-nous?</a></li>
-                <?php if (User::isLoggedIn()): ?>
-                    <li><a href="cart.php">Panier <span class="cart-badge" id="cart-count">0</span></a></li>
-                    <li><a href="../views/logout.php">Déconnexion</a></li>
-                <?php else: ?>
-                    <li><a href="../views/login.php">Connexion</a></li>
-                    <li><a href="../views/register.php">Inscription</a></li>
-                <?php endif; ?>
-                <?php if (User::isAdmin()): ?>
-                    <li><a href="../admin/dashboard.php">Admin</a></li>
-                <?php endif; ?>
-            </ul>
-        </div>
-    </nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <h2>Bienvenue dans notre boutique en ligne</h2>
-            <p>Découvrez nos produits de qualité premium</p>
-            <a href="articles.php" class="btn btn-primary">Voir les produits</a>
-        </div>
-    </section>
+<section class="hero">
+    <div class="hero-bg hero-bg-1" style="background-image: url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&auto=format&fit=crop');"></div>
 
-    <!-- Featured Products -->
-    <section class="featured-section">
+    <div class="hero-bg hero-bg-2" style="background-image: url('https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1600&auto=format&fit=crop');"></div>
+
+    <div class="hero-overlay"></div>
+
+    <div class="hero-content">
         <div class="container">
-            <h2>Produits en vedette</h2>
-            <div class="products-grid">
-                <?php foreach ($featuredProducts as $prod): ?>
-                    <div class="product-card">
-                        <div class="product-image">
-                            <img src="images/<?php echo htmlspecialchars($prod['image']); ?>" 
-                                 alt="<?php echo htmlspecialchars($prod['nom']); ?>">
-                        </div>
-                        <div class="product-info">
-                            <h3><?php echo htmlspecialchars($prod['nom']); ?></h3>
-                            <p class="description"><?php echo substr(htmlspecialchars($prod['description']), 0, 80) . '...'; ?></p>
-                            <p class="price"><?php echo number_format($prod['prix'], 2); ?> €</p>
-                            <p class="stock <?php echo $prod['quantite_en_stock'] > 0 ? 'in-stock' : 'out-of-stock'; ?>">
-                                <?php echo $prod['quantite_en_stock'] > 0 ? 'En stock' : 'Rupture de stock'; ?>
-                            </p>
-                            <a href="product-detail.php?id=<?php echo $prod['id']; ?>" class="btn btn-secondary">
-                                Voir détails
-                            </a>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
+            <h1>Le style à portée de clic.</h1>
+            <p>Découvrez notre nouvelle collection 2026. Qualité premium, design unique.</p>
+            <a href="catalogue.php" class="btn btn-primary btn-auto" style="font-size: 1.2rem; padding: 15px 30px;">Voir le catalogue</a>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 E-Commerce. Tous droits réservés.</p>
+<div class="container">
+    <h2 style="text-align:center; margin-bottom: 40px; font-weight: 600;">Pourquoi nous choisir ?</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; text-align: center;">
+        <div style="padding: 20px;">
+            <i class="bi bi-truck" style="font-size: 3rem; color: var(--primary);"></i>
+            <h3>Livraison Rapide</h3>
+            <p>Expédition en 24h partout en France.</p>
         </div>
-    </footer>
+        <div style="padding: 20px;">
+            <i class="bi bi-shield-check" style="font-size: 3rem; color: var(--primary);"></i>
+            <h3>Paiement Sécurisé</h3>
+            <p>Transactions cryptées et garanties.</p>
+        </div>
+        <div style="padding: 20px;">
+            <i class="bi bi-heart" style="font-size: 3rem; color: var(--primary);"></i>
+            <h3>Service Client</h3>
+            <p>Une équipe à votre écoute 7j/7.</p>
+        </div>
+    </div>
+</div>
 
-    <script>
-        // Mettre à jour le compteur du panier
-        function updateCartCount() {
-            fetch('cart_count.php')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('cart-count').textContent = data.count;
-                });
-        }
-        
-        document.addEventListener('DOMContentLoaded', updateCartCount);
-    </script>
-</body>
-</html>
-<?php $db->close(); ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

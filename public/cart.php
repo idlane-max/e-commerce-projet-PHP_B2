@@ -1,107 +1,103 @@
 <?php
-/**
- * Page du panier d'achat
- */
-require_once '../config/config.php';
-require_once '../src/Cart.php';
-require_once '../src/User.php';
+// Parnier
+// 1. Inclusions & Config
+// CORRECTION : On utilise les chemins définis dans config ou relatifs à la racine
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../src/Cart.php'; // C'est dans includes, pas src
 
-// Vérifier que l'utilisateur est connecté
-if (!User::isLoggedIn()) {
-    header('Location: ../views/login.php');
-    exit;
+// 2. Vérification Connexion
+if (!isset($_SESSION['user'])) {
+    // CORRECTION : Redirection vers login.php (à la racine)
+    echo "<script>window.location.href='../views/login.php';</script>";
+    exit();
 }
 
-$db = connectDB();
-$cart = new Cart($db);
+$pdo = connectDB();
+$cart = new Cart($pdo);
 
 $message = '';
 $messageType = '';
 
-// Traiter les actions du panier
+// 3. Traitement des actions (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    
+
+    // A. Supprimer un article
     if ($action === 'remove') {
-        $productId = $_POST['product_id'] ?? '';
+        $productId = intval($_POST['product_id'] ?? 0);
         $result = $cart->removeFromCart($productId);
         $message = $result['message'];
-        $messageType = $result['success'] ? 'success' : 'error';
-    } elseif ($action === 'update') {
-        $productId = $_POST['product_id'] ?? '';
-        $quantity = $_POST['quantity'] ?? '';
+        $messageType = $result['success'] ? 'success' : 'danger';
+    } 
+    // B. Mettre à jour la quantité
+    elseif ($action === 'update') {
+        $productId = intval($_POST['product_id'] ?? 0);
+        $quantity = intval($_POST['quantity'] ?? 0);
         $result = $cart->updateQuantity($productId, $quantity);
         $message = $result['message'];
-        $messageType = $result['success'] ? 'success' : 'error';
-    } elseif ($action === 'clear') {
-        $result = $cart->clearCart();
-        $message = $result['message'];
-        $messageType = $result['success'] ? 'success' : 'error';
-    } elseif ($action === 'checkout') {
+        $messageType = $result['success'] ? 'success' : 'danger';
+    } 
+    // C. Vider le panier
+    elseif ($action === 'clear') {
+        $cart->clearCart();
+        $message = "Panier vidé.";
+        $messageType = 'success';
+    } 
+    // D. Passer la commande (Checkout)
+    elseif ($action === 'checkout') {
         $adresse = trim($_POST['adresse'] ?? '');
         $ville = trim($_POST['ville'] ?? '');
         $codePostal = trim($_POST['code_postal'] ?? '');
         
-        $result = $cart->checkout($adresse, $ville, $codePostal);
+        $userId = $_SESSION['user']['id'];
+        
+        $result = $cart->checkout($userId, $adresse, $ville, $codePostal);
+        
         $message = $result['message'];
-        $messageType = $result['success'] ? 'success' : 'error';
+        $messageType = $result['success'] ? 'success' : 'danger';
         
         if ($result['success']) {
-            // Rediriger vers une page de confirmation après 2 secondes
-            header("refresh:2;url=order-confirmation.php?invoice_id=" . $result['invoice_id']);
+            // CORRECTION : On redirige vers la page de confirmation avec l'ID de la facture
+            // On suppose que ta méthode checkout retourne 'invoice_id' (comme vu à l'étape Cart.php)
+            $invoiceId = $result['invoice_id'] ?? 0;
+            echo "<script>setTimeout(function(){ window.location.href='order-confirmation.php?invoice_id=" . $invoiceId . "'; }, 1000);</script>";
         }
     }
 }
 
+// 4. Récupération des données
 $cartItems = $cart->getCartItems();
 $total = $cart->getCartTotal();
+$cartCount = $cart->getCartCount();
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panier - E-Commerce</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container navbar-content">
-            <div class="logo">
-                <h1><a href="index.php">E-Commerce</a></h1>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="index.php">Accueil</a></li>
-                <li><a href="articles.php">Articles</a></li>
-                <li><a href="about.php">Qui sommes-nous?</a></li>
-                <li><a href="cart.php">Panier <span class="cart-badge" id="cart-count"><?php echo $cart->getCartCount(); ?></span></a></li>
-                <li><a href="../views/logout.php">Déconnexion</a></li>
-            </ul>
-        </div>
-    </nav>
 
-    <!-- Cart Page -->
-    <div class="container">
-        <h1>Panier d'achat</h1>
-        
-        <?php if ($message): ?>
-            <div class="alert alert-<?php echo $messageType; ?>">
-                <?php echo $message; ?>
-            </div>
-        <?php endif; ?>
-        
-        <?php if (empty($cartItems)): ?>
-            <p>Votre panier est vide.</p>
-            <a href="articles.php" class="btn btn-primary">Continuer vos achats</a>
-        <?php else: ?>
-            <div class="cart-content">
+<div class="container">
+    <h1 style="margin-top: 30px; margin-bottom: 20px;">Mon Panier</h1>
+
+    <?php if ($message): ?>
+        <div class="alert alert-<?php echo $messageType; ?>">
+            <?php echo $message; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (empty($cartItems)): ?>
+        <div style="text-align: center; padding: 60px 0; background: white; border-radius: var(--radius); box-shadow: var(--shadow-sm);">
+            <i class="bi bi-cart-x" style="font-size: 4rem; color: #ddd;"></i>
+            <h3 style="margin: 20px 0;">Votre panier est vide</h3>
+            <a href="catalogue.php" class="btn btn-primary btn-auto">Retourner au catalogue</a>
+        </div>
+    <?php else: ?>
+
+        <div class="cart-container">
+            
+            <div class="cart-items">
                 <table class="cart-table">
                     <thead>
                         <tr>
                             <th>Produit</th>
-                            <th>Prix unitaire</th>
-                            <th>Quantité</th>
+                            <th>Prix</th>
+                            <th>Qté</th>
                             <th>Total</th>
                             <th>Action</th>
                         </tr>
@@ -109,22 +105,38 @@ $total = $cart->getCartTotal();
                     <tbody>
                         <?php foreach ($cartItems as $item): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($item['nom']); ?></td>
+                                <td>
+                                    <div class="cart-product-info">
+                                        <img src="<?php echo htmlspecialchars($item['image']); ?>" alt="Img">
+                                        <div>
+                                            <strong><?php echo htmlspecialchars($item['nom']); ?></strong>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td><?php echo number_format($item['price'], 2); ?> €</td>
                                 <td>
-                                    <form method="POST" style="display: inline;">
+                                    <form method="POST" style="display:flex; gap:5px; align-items:center;">
                                         <input type="hidden" name="action" value="update">
                                         <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
-                                        <input type="number" name="quantity" value="<?php echo $item['quantity']; ?>" min="1" style="width: 50px;">
-                                        <button type="submit" class="btn-small">Mettre à jour</button>
+                                        
+                                        <input type="number" name="quantity" value="<?php echo $item['quantity']; ?>" min="1" 
+                                               style="width: 50px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: center;">
+                                        
+                                        <button type="submit" class="btn btn-primary btn-auto" style="padding: 5px 10px; font-size: 0.8rem;" title="Mettre à jour">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </button>
                                     </form>
                                 </td>
-                                <td><?php echo number_format($item['total'], 2); ?> €</td>
+                                <td style="font-weight: bold; color: var(--primary);">
+                                    <?php echo number_format($item['total'], 2); ?> €
+                                </td>
                                 <td>
-                                    <form method="POST" style="display: inline;">
+                                    <form method="POST">
                                         <input type="hidden" name="action" value="remove">
                                         <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">
-                                        <button type="submit" class="btn btn-danger">Supprimer</button>
+                                        <button type="submit" class="cart-action-btn" style="background:none; border:none;" title="Supprimer">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
@@ -132,48 +144,57 @@ $total = $cart->getCartTotal();
                     </tbody>
                 </table>
                 
-                <div class="cart-summary">
-                    <p class="total">Total: <strong><?php echo number_format($total, 2); ?> €</strong></p>
+                <div style="padding: 20px;">
+                    <form method="POST">
+                        <input type="hidden" name="action" value="clear">
+                        <button type="submit" class="btn btn-danger btn-auto" onclick="return confirm('Tout supprimer ?');">
+                            <i class="bi bi-trash"></i> Vider le panier
+                        </button>
+                    </form>
                 </div>
+            </div>
+
+            <div class="cart-summary">
+                <h2>Résumé</h2>
+                <div class="summary-row">
+                    <span>Articles (<?php echo $cartCount; ?>)</span>
+                    <span><?php echo number_format($total, 2); ?> €</span>
+                </div>
+                <div class="summary-row summary-total">
+                    <span>Total à payer</span>
+                    <span><?php echo number_format($total, 2); ?> €</span>
+                </div>
+
+                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+                <h3 style="font-size: 1.2rem; margin-bottom: 15px;">Livraison</h3>
                 
-                <!-- Checkout Form -->
-                <form method="POST" class="checkout-form">
+                <form method="POST" action="cart.php">
                     <input type="hidden" name="action" value="checkout">
                     
-                    <h3>Adresse de livraison</h3>
-                    
                     <div class="form-group">
-                        <label for="adresse">Adresse:</label>
-                        <input type="text" id="adresse" name="adresse" required>
+                        <label for="adresse">Adresse complète</label>
+                        <input type="text" id="adresse" name="adresse" required placeholder="12 rue de la Paix">
                     </div>
                     
                     <div class="form-group">
-                        <label for="ville">Ville:</label>
-                        <input type="text" id="ville" name="ville" required>
+                        <label for="ville">Ville</label>
+                        <input type="text" id="ville" name="ville" required placeholder="Paris">
                     </div>
                     
                     <div class="form-group">
-                        <label for="code_postal">Code postal:</label>
-                        <input type="text" id="code_postal" name="code_postal" required>
+                        <label for="code_postal">Code Postal</label>
+                        <input type="text" id="code_postal" name="code_postal" required placeholder="75000">
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary">Finaliser la commande</button>
-                </form>
-                
-                <form method="POST" style="display: inline;">
-                    <input type="hidden" name="action" value="clear">
-                    <button type="submit" class="btn btn-secondary">Vider le panier</button>
+
+                    <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+                        <i class="bi bi-credit-card"></i> Valider et Payer
+                    </button>
                 </form>
             </div>
-        <?php endif; ?>
-    </div>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 E-Commerce. Tous droits réservés.</p>
         </div>
-    </footer>
-</body>
-</html>
-<?php $db->close(); ?>
+    <?php endif; ?>
+</div>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

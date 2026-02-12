@@ -1,146 +1,128 @@
 <?php
-/**
- * Page détail d'un produit
- */
-require_once '../config/config.php';
-require_once '../src/Product.php';
-require_once '../src/User.php';
+// 1. Inclusions
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../src/Product.php';
 
-$db = connectDB();
-$product = new Product($db);
+// 2. Récupération de l'ID
+$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
-$productId = $_GET['id'] ?? null;
-
-if (!$productId || !is_numeric($productId)) {
-    header('Location: articles.php');
-    exit;
+if ($id <= 0) {
+    echo "<script>window.location.href='catalogue.php';</script>";
+    exit();
 }
 
-$productDetail = $product->getProductById($productId);
+// 3. Récupération du produit via PDO
+$pdo = connectDB();
+$productManager = new Product($pdo);
+$product = $productManager->getProductById($id);
 
-if (!$productDetail) {
-    header('Location: articles.php');
-    exit;
+if (!$product) {
+    echo "<div class='container'><div class='alert alert-danger'>Produit introuvable.</div></div>";
+    require_once __DIR__ . '/../includes/footer.php';
+    exit();
 }
+
+// Gestion des classes CSS pour le stock
+$isInStock = $product['stock'] > 0;
+$stockClass = $isInStock ? 'in-stock' : 'out-of-stock';
+$stockText = $isInStock ? 'En stock (' . $product['stock'] . ' disponibles)' : 'Rupture de stock';
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($productDetail['nom']); ?> - E-Commerce</title>
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container navbar-content">
-            <div class="logo">
-                <h1><a href="index.php">E-Commerce</a></h1>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="index.php">Accueil</a></li>
-                <li><a href="articles.php">Articles</a></li>
-                <li><a href="about.php">Qui sommes-nous?</a></li>
-                <?php if (User::isLoggedIn()): ?>
-                    <li><a href="cart.php">Panier <span class="cart-badge" id="cart-count">0</span></a></li>
-                    <li><a href="../views/logout.php">Déconnexion</a></li>
-                <?php else: ?>
-                    <li><a href="../views/login.php">Connexion</a></li>
-                    <li><a href="../views/register.php">Inscription</a></li>
-                <?php endif; ?>
-            </ul>
-        </div>
+
+<div class="container">
+    <nav style="margin-top: 20px; font-size: 0.9rem; color: var(--text-light);">
+        <a href="index.php">Accueil</a> &gt; 
+        <a href="catalogue.php">Catalogue</a> &gt; 
+        <span style="color: var(--text-dark); font-weight: 600;"><?php echo htmlspecialchars($product['nom']); ?></span>
     </nav>
 
-    <!-- Product Detail -->
-    <div class="container product-detail">
-        <a href="articles.php" class="btn btn-secondary back-link">&larr; Retour aux articles</a>
+    <div class="product-detail-container">
         
-        <div class="product-detail-content">
-            <div class="product-image-large">
-                <img src="images/<?php echo htmlspecialchars($productDetail['image']); ?>" 
-                     alt="<?php echo htmlspecialchars($productDetail['nom']); ?>">
-            </div>
+        <div class="detail-image-wrapper">
+            <img src="<?php echo htmlspecialchars($product['image']); ?>" 
+                 alt="<?php echo htmlspecialchars($product['nom']); ?>">
+        </div>
+
+        <div class="detail-info-wrapper">
+            <h1><?php echo htmlspecialchars($product['nom']); ?></h1>
             
-            <div class="product-detail-info">
-                <h1><?php echo htmlspecialchars($productDetail['nom']); ?></h1>
-                
-                <div class="price-info">
-                    <p class="price"><?php echo number_format($productDetail['prix'], 2); ?> €</p>
-                </div>
-                
-                <div class="stock-info">
-                    <p class="stock <?php echo $productDetail['quantite_en_stock'] > 0 ? 'in-stock' : 'out-of-stock'; ?>">
-                        <?php echo $productDetail['quantite_en_stock'] > 0 ? 'En stock (' . $productDetail['quantite_en_stock'] . ' disponible(s))' : 'Rupture de stock'; ?>
-                    </p>
-                </div>
-                
-                <div class="description-full">
-                    <h3>Description</h3>
-                    <p><?php echo nl2br(htmlspecialchars($productDetail['description'])); ?></p>
-                </div>
-                
-                <?php if (User::isLoggedIn() && $productDetail['quantite_en_stock'] > 0): ?>
-                    <form class="add-to-cart-form" id="add-to-cart-form">
-                        <div class="form-group">
-                            <label for="quantity">Quantité:</label>
-                            <input type="number" id="quantity" name="quantity" min="1" 
-                                   max="<?php echo $productDetail['quantite_en_stock']; ?>" value="1">
+            <div class="stock-badge-large <?php echo $stockClass; ?>">
+                <i class="bi <?php echo $isInStock ? 'bi-check-circle' : 'bi-x-circle'; ?>"></i> 
+                <?php echo $stockText; ?>
+            </div>
+
+            <span class="detail-price"><?php echo number_format($product['prix'], 2, ',', ' '); ?> €</span>
+
+            <div class="detail-description">
+                <p><?php echo nl2br(htmlspecialchars($product['description'])); ?></p>
+            </div>
+
+            <div class="add-to-cart-box">
+                <?php if ($isInStock): ?>
+                    <form id="add-to-cart-form" class="cart-form">
+                        <input type="hidden" id="product_id" value="<?php echo $product['id']; ?>">
+                        
+                        <div>
+                            <label style="display:block; margin-bottom:5px; font-size:0.9rem;">Quantité</label>
+                            <input type="number" id="quantity" value="1" min="1" max="<?php echo $product['stock']; ?>" class="quantity-input">
                         </div>
-                        <button type="submit" class="btn btn-primary">Ajouter au panier</button>
+
+                        <button type="submit" class="btn btn-primary" style="flex-grow: 1;">
+                            <i class="bi bi-cart-plus"></i> Ajouter au panier
+                        </button>
                     </form>
-                <?php elseif (!User::isLoggedIn()): ?>
-                    <p><a href="../views/login.php" class="btn btn-primary">Connectez-vous pour acheter</a></p>
                 <?php else: ?>
-                    <p class="btn btn-disabled">Produit indisponible</p>
+                    <button class="btn btn-disabled" disabled style="width:100%;">Indisponible</button>
                 <?php endif; ?>
             </div>
+            
+            <div id="ajax-message" style="margin-top: 15px; display: none;"></div>
+
         </div>
     </div>
+</div>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 E-Commerce. Tous droits réservés.</p>
-        </div>
-    </footer>
-
-    <script>
-        document.getElementById('add-to-cart-form').addEventListener('submit', function(e) {
-            e.preventDefault();
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('add-to-cart-form');
+    
+    if(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // On empêche le rechargement de la page
             
+            const productId = document.getElementById('product_id').value;
             const quantity = document.getElementById('quantity').value;
-            const productId = <?php echo $productId; ?>;
-            
+            const messageDiv = document.getElementById('ajax-message');
+
+            // Appel AJAX vers le fichier PHP de traitement
             fetch('add_to_cart.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'product_id=' + productId + '&quantity=' + quantity
+                body: `id=${productId}&quantity=${quantity}`
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    alert(data.message);
-                    updateCartCount();
+                // Affichage du message
+                messageDiv.style.display = 'block';
+                if(data.success) {
+                    messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                    // Mise à jour du compteur dans le header (optionnel si tu as l'id cart-count)
+                    // updateCartCount(); 
                 } else {
-                    alert(data.message);
+                    messageDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
                 }
+                
+                // Masquer le message après 3 secondes
+                setTimeout(() => { messageDiv.style.display = 'none'; }, 3000);
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
             });
         });
-        
-        function updateCartCount() {
-            fetch('cart_count.php')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('cart-count').textContent = data.count;
-                });
-        }
-        
-        document.addEventListener('DOMContentLoaded', updateCartCount);
-    </script>
-</body>
-</html>
-<?php $db->close(); ?>
+    }
+});
+</script>
+
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
