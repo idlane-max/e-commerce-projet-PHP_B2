@@ -1,0 +1,13 @@
+### J'ai remplacer mysqli par PDO, ce qui à conduit à la modification de presque tout les fichier
+
+### J'ai appliquer le DRY pour n'avoir qu'un seul fichier header qui gere l'entête de toute les pages 
+et un fichier footer qui gere le pied de page de toute les pages. (dans le dossier includes)
+
+### J'ai rajouter de nouveaux article dans la base de donnee et de images via (https://unsplash.com/)
+
+### J'ai remplacer le fichier "articles.php" qui s'occupe des produits par "catalogue.php"
+
+### J'ai creer un fichier pour voir l'historique des achats  "mes-commandes"
+
+## J'ai remplacer le fichier "dashboard.php" par index.php
+## J'ai oublier d'utiliser le fichier cart_count.php pour compter le nombre d'article dans le panier
