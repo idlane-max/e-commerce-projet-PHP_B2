@@ -13,14 +13,14 @@ define('DB_NAME', 'ecommerce');
 // Exemple : http://localhost/mon_ecommerce
 define('BASE_URL', 'http://localhost/e-commerce-projet-PHP_B2');
 
-// 3. Chemins absolus des dossiers (Pour les inclusions PHP)
+// 3. Chemins absolus des dossiers 
 define('ROOT_PATH', dirname(__DIR__)); // Remonte d'un cran depuis /config
 define('CONFIG_PATH', ROOT_PATH . '/config');
 define('SRC_PATH', ROOT_PATH . '/src');
 define('VIEWS_PATH', ROOT_PATH . '/views');
 define('PUBLIC_PATH', ROOT_PATH . '/public');
 define('ADMIN_PATH', ROOT_PATH . '/admin');
-// 4. Fonction de connexion (Passage en PDO pour plus de sécurité/simplicité)
+// 4. Fonction de connexion à la base de données
 function connectDB() {
     $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
     
@@ -35,7 +35,6 @@ function connectDB() {
         return $pdo;
 
     } catch (PDOException $e) {
-        // En prod, on ne devrait pas afficher le détail de l'erreur à l'utilisateur, mais pour le dev c'est ok
         die("Erreur de connexion BDD : " . $e->getMessage());
     }
 }
