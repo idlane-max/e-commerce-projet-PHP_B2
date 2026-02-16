@@ -1,6 +1,6 @@
 <?php
 /**
- * Classe Cart - Gestion du panier d'achat (Version PDO)
+ * Classe Cart - Gestion du panier d'achat 
  */
 class Cart {
     private $pdo;
@@ -77,7 +77,9 @@ class Cart {
         
         if (empty($ids)) return [];
 
-        // Astuce PDO pour faire un "WHERE id IN (...)"
+        // Construction sécurisée d'un "WHERE id IN (...)" avec PDO :
+        // On génère autant de placeholders "?" qu'il y a d'IDs,
+        // puis on exécute la requête en passant directement le tableau d'IDs.
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $sql = "SELECT id, nom, prix, image FROM items WHERE id IN ($placeholders)";
         $stmt = $this->pdo->prepare($sql);
@@ -150,7 +152,7 @@ class Cart {
     }
     
     /**
-     * Obtenir le nombre d'articles (badge)
+     * Obtenir le nombre d'articles dans le panier (pour l'affichage dans le header par exemple)
      */
     public function getCartCount() {
         $count = 0;
@@ -178,13 +180,7 @@ class Cart {
         try {
             $this->pdo->beginTransaction();
 
-            // 1. Créer la commande (Order) globale (Optionnel selon ta structure, 
-            // mais ta table orders semble lier user et item directement.
-            // On va suivre ta logique : une ligne dans orders par item)
-            
-            // NOTE : Ta structure BDD "orders" lie directement item et user.
-            // C'est un peu inhabituel (d'habitude on a Orders -> OrderDetails),
-            // mais je respecte ta structure.
+            // 1. Créer la commande (Order) globale
             
             // Création de la facture (Invoice)
             $montant = $this->getCartTotal();
@@ -199,7 +195,6 @@ class Cart {
                 $price = $item['price'];
 
                 // A. Insérer dans Orders
-                // Rappel : Ta table orders a (id_user, id_item, quantite, prix_unitaire)
                 $sqlOrder = "INSERT INTO orders (id_user, id_item, quantite, prix_unitaire) VALUES (?, ?, ?, ?)";
                 $stmtOrd = $this->pdo->prepare($sqlOrder);
                 $stmtOrd->execute([$userId, $id, $qty, $price]);

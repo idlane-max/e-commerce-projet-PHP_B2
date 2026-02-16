@@ -42,8 +42,6 @@ class User {
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
         
         // 3. Insérer l'utilisateur
-        // CORRECTION ICI : utilisation de 'mot_de_passe' au lieu de 'password'
-        // NOTE : J'utilise 'role' (sans accent). Si ta colonne est 'rôle', modifie la ligne ci-dessous.
         $sql = "INSERT INTO users (nom, email, mot_de_passe, role) VALUES (:nom, :email, :mdp, 'client')";
         
         $stmt = $this->pdo->prepare($sql);
@@ -110,10 +108,10 @@ class User {
     // --- AJOUTS POUR L'ADMIN (PDO) ---
 
     /**
-     * Récupérer tous les clients (Performance : on ne prend que l'utile)
+     * Récupérer tous les clients 
      */
     public function getAllClients() {
-        // On exclut les admins de la liste pour éviter les accidents
+        // On exclut les admins de la liste 
         $sql = "SELECT id, nom, email, date_inscription 
                 FROM users 
                 WHERE role != 'admin' 

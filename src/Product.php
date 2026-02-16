@@ -1,6 +1,6 @@
 <?php
 /**
- * Classe Product - Gestion des produits (Version PDO)
+ * Classe Product - Gestion des produits
  */
 class Product {
     private $pdo; // On utilise PDO
