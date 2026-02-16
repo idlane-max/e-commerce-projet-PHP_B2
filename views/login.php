@@ -26,13 +26,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = $user->login($email, $password);
     
     if ($result['success']) {
-        // Succès : Redirection vers l'accueil
-        header('Location: ../public/index.php');
+        // On vérifie le rôle stocké en session (qui vient d'être créé par User.php)
+        if ($_SESSION['user']['role'] === 'admin') {
+            header('Location: ../admin/dashboard.php'); // L'admin va vers son dashboard
+        } else {
+            header('Location: ../public/index.php'); // Le client va vers l'accueil
+        }
         exit();
     } else {
-        // Erreur : On affiche le message
         $message = $result['message'];
-        $messageType = 'danger'; // 'danger' pour le rouge CSS
+        $messageType = 'danger';
     }
 }
 ?>
