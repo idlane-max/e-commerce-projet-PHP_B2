@@ -12,8 +12,6 @@ $pdo = connectDB();
 $userId = $_SESSION['user']['id'];
 
 // Récupérer les factures (Invoice) triées par date
-// Note : La jointure n'est pas nécessaire si tu n'as pas besoin des noms d'items ici
-// Mais on va récupérer les commandes groupées
 $sql = "SELECT * FROM invoice WHERE id_user = :uid ORDER BY date_transaction DESC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute(['uid' => $userId]);

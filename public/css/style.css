@@ -51,7 +51,7 @@ a {
 }
 
 /* ================================================
-   NAVIGATION (Glassmorphism)
+   NAVIGATION 
    ================================================ */
 .navbar {
     background-color: rgba(255, 255, 255, 0.95);
@@ -111,7 +111,7 @@ a {
 }
 
 /* ================================================
-   HERO SLIDESHOW ANIMÉ (Version Complète)
+   HERO SLIDESHOW ANIMÉ 
    ================================================ */
 
 .hero {
@@ -161,7 +161,7 @@ a {
     z-index: 1; /* Pour passer au-dessus des images */
 }
 
-/* Typographie (récupérée de ton ancien code) */
+/* Typographie */
 .hero h1 {
     font-size: 3.5rem;
     font-weight: 700;
@@ -185,7 +185,7 @@ a {
     100% { opacity: 0; }
 }
 
-/* RESPONSIVE (Code ajouté précédemment pour le mobile) */
+/* RESPONSIVE  */
 @media (max-width: 768px) {
     .hero {
         padding: 60px 20px;
@@ -357,7 +357,7 @@ a {
 .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
 /* ================================================
-   CATALOGUE (Styles spécifiques)
+   CATALOGUE (catalogue.php)
    ================================================ */
 
 /* En-tête du catalogue */
@@ -507,7 +507,7 @@ a {
 
 
 /* ================================================
-   PAGE PANIER (panier.php)
+   PAGE PANIER (cart.php)
    ================================================ */
 
 .cart-container {
@@ -696,7 +696,7 @@ a {
     
     /* 1. RÉPARER LA NAVBAR PRINCIPALE */
     .navbar .container {
-        flex-direction: column; /* On empile le logo et le menu */
+        flex-direction: column; /* empile le logo et le menu */
         gap: 15px;
     }
 
@@ -733,7 +733,7 @@ a {
     }
 
     .hero h1 {
-        font-size: 2rem; /* Beaucoup plus petit que 3.5rem */
+        font-size: 2rem; /* Titre plus petit sur mobile */
     }
 
     .hero p {

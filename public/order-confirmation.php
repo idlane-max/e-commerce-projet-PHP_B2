@@ -32,21 +32,13 @@ if (!$invoice) {
 }
 
 // 4. Récupérer les articles de la commande (Orders + Items)
-// Note : Ta requête SQL initiale utilisait DATE_SUB(NOW(), INTERVAL 1 MINUTE).
-// C'est risqué si le client met du temps à charger la page.
-// Mieux vaut récupérer les commandes liées à cet utilisateur créées "récemment"
-// ou idéalement lier invoice et orders (mais ta structure ne le fait pas explicitement).
-// Je vais adapter ta requête pour prendre les dernières commandes.
-
 $sqlItems = "SELECT o.quantite, o.prix_unitaire, i.nom 
              FROM orders o
              JOIN items i ON o.id_item = i.id
              WHERE o.id_user = :user_id 
              ORDER BY o.date_commande DESC 
              LIMIT 20"; 
-             // LIMIT 20 est une sécurité. L'idéal serait d'avoir un 'invoice_id' dans la table 'orders'.
-
-$stmt = $pdo->prepare($sqlItems);
+             // LIMIT 20 est une sécurité.
 $stmt->execute(['user_id' => $userId]);
 $orderItems = $stmt->fetchAll();
 ?>

@@ -82,7 +82,7 @@ require_once '../includes/header.php'; // Inclut le menu et le CSS automatiqueme
 </div>
 
 <?php 
-// Ton script JS pour le panier (si tu veux le garder ici, bien qu'il pourrait être dans le footer global)
+// script JS pour le panier
 ?>
 <script>
     function updateCartCount() {

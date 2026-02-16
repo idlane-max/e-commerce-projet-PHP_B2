@@ -94,7 +94,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const quantity = document.getElementById('quantity').value;
             const messageDiv = document.getElementById('ajax-message');
 
-            // Appel AJAX vers le fichier PHP de traitement
+            // Envoi d'une requête AJAX vers add_to_cart.php pour ajouter un produit au panier.
+            // On envoie l'id du produit et la quantité en POST, puis on récupère la réponse JSON.
+            // Selon le résultat (success ou erreur), on affiche un message temporaire à l'utilisateur.
             fetch('add_to_cart.php', {
                 method: 'POST',
                 headers: {
@@ -108,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 messageDiv.style.display = 'block';
                 if(data.success) {
                     messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-                    // Mise à jour du compteur dans le header (optionnel si tu as l'id cart-count)
+                    // Mise à jour du compteur dans le header 
                     // updateCartCount(); 
                 } else {
                     messageDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;

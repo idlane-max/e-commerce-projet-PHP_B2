@@ -1,14 +1,12 @@
 <?php
 // Parnier
 // 1. Inclusions & Config
-// CORRECTION : On utilise les chemins définis dans config ou relatifs à la racine
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../src/Cart.php'; // C'est dans includes, pas src
+require_once __DIR__ . '/../src/Cart.php'; 
 
 // 2. Vérification Connexion
 if (!isset($_SESSION['user'])) {
-    // CORRECTION : Redirection vers login.php (à la racine)
     echo "<script>window.location.href='../views/login.php';</script>";
     exit();
 }
@@ -58,8 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $messageType = $result['success'] ? 'success' : 'danger';
         
         if ($result['success']) {
-            // CORRECTION : On redirige vers la page de confirmation avec l'ID de la facture
-            // On suppose que ta méthode checkout retourne 'invoice_id' (comme vu à l'étape Cart.php)
+            // On redirige vers la page de confirmation avec l'ID de la facture
             $invoiceId = $result['invoice_id'] ?? 0;
             echo "<script>setTimeout(function(){ window.location.href='order-confirmation.php?invoice_id=" . $invoiceId . "'; }, 1000);</script>";
         }
@@ -97,7 +94,7 @@ $cartCount = $cart->getCartCount();
                         <tr>
                             <th>Produit</th>
                             <th>Prix</th>
-                            <th>Qté</th>
+                            <th>Quantité</th>
                             <th>Total</th>
                             <th>Action</th>
                         </tr>

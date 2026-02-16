@@ -37,7 +37,7 @@ if (isset($_POST['id'])) {
 
 $quantity = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
 
-// Debugging (si besoin, tu pourras voir ça dans l'onglet Réseau de ton navigateur)
+// Debugging (voir dans l'onglet Réseau du navigateur)
 // error_log("ID reçu : " . $productId . " - Quantité : " . $quantity);
 
 if ($productId <= 0 || $quantity <= 0) {
